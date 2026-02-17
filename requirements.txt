@@ -1,0 +1,8 @@
+# Nmap Dojo - Dependencies
+# Python 3.x required
+
+# UI Framework
+flet>=0.25.0
+
+# AI Provider - Google Gemini
+google-generativeai>=0.8.0
