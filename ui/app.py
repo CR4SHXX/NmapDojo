@@ -387,27 +387,32 @@ class NmapDojoApp:
         if self.explain_btn:
             self.explain_btn.visible = False
         
-        try:
-            # Update mission generator with current state
-            if self.mission_generator:
-                self.mission_generator.level = self.level
-                self.mission_generator.last_topic_index = self.last_topic_index
-                
-                mission = self.mission_generator.generate_mission()
-                if mission:
-                    self.current_mission = mission
-                    self.last_topic_index = self.mission_generator.last_topic_index
-                    self.update_mission_display()
-                    self.add_terminal_line("")
-                    self.add_terminal_line(f"[NEW MISSION] {mission['title']}", COLOR_TEXT_CYAN)
-                    self.add_terminal_line(f"Target: {mission['target_ip']}", COLOR_TEXT_YELLOW)
-                    self.add_terminal_line("")
-        except Exception as e:
-            logger.error(f"Mission generation failed: {e}")
-            self.add_terminal_line(f"[!] Mission generation failed: {str(e)}", COLOR_ERROR)
-            self.add_terminal_line("[!] Click 'New Mission' to retry.", COLOR_TEXT_YELLOW)
-        finally:
-            self.set_loading(False)
+        self.add_terminal_line("[*] Generating new mission...", COLOR_TEXT_CYAN)
+        
+        def _run() -> None:
+            try:
+                # Update mission generator with current state
+                if self.mission_generator:
+                    self.mission_generator.level = self.level
+                    self.mission_generator.last_topic_index = self.last_topic_index
+                    
+                    mission = self.mission_generator.generate_mission()
+                    if mission:
+                        self.current_mission = mission
+                        self.last_topic_index = self.mission_generator.last_topic_index
+                        self.update_mission_display()
+                        self.add_terminal_line("")
+                        self.add_terminal_line(f"[NEW MISSION] {mission['title']}", COLOR_TEXT_CYAN)
+                        self.add_terminal_line(f"Target: {mission['target_ip']}", COLOR_TEXT_YELLOW)
+                        self.add_terminal_line("")
+            except Exception as e:
+                logger.error(f"Mission generation failed: {e}")
+                self.add_terminal_line(f"[!] Mission generation failed: {str(e)}", COLOR_ERROR)
+                self.add_terminal_line("[!] Click 'New Mission' to retry.", COLOR_TEXT_YELLOW)
+            finally:
+                self.set_loading(False)
+        
+        self.page.run_thread(_run)
     
     def update_mission_display(self) -> None:
         """Update the mission card UI with current mission data."""
@@ -452,6 +457,8 @@ class NmapDojoApp:
             self.new_mission_btn.disabled = loading
         if self.get_hint_btn:
             self.get_hint_btn.disabled = loading
+        if self.explain_btn:
+            self.explain_btn.disabled = loading
         self.page.update()
     
     def on_command_submit(self, e: ft.ControlEvent) -> None:
@@ -532,17 +539,20 @@ class NmapDojoApp:
         self.set_loading(True)
         self.add_terminal_line("[*] Scanning...", COLOR_TEXT_CYAN)
         
-        try:
-            if self.command_validator and self.current_mission:
-                result = self.command_validator.validate_command(command, self.current_mission)
-                if result:
-                    self.process_validation_result(result, command)
-        except Exception as e:
-            logger.error(f"Validation error: {e}")
-            self.add_terminal_line(f"[!] Validation error: {str(e)}", COLOR_ERROR)
-            self.add_terminal_line("[!] Please try again.", COLOR_TEXT_YELLOW)
-        finally:
-            self.set_loading(False)
+        def _run() -> None:
+            try:
+                if self.command_validator and self.current_mission:
+                    result = self.command_validator.validate_command(command, self.current_mission)
+                    if result:
+                        self.process_validation_result(result, command)
+            except Exception as e:
+                logger.error(f"Validation error: {e}")
+                self.add_terminal_line(f"[!] Validation error: {str(e)}", COLOR_ERROR)
+                self.add_terminal_line("[!] Please try again.", COLOR_TEXT_YELLOW)
+            finally:
+                self.set_loading(False)
+        
+        self.page.run_thread(_run)
     
     def process_validation_result(self, result: ValidationResult, command: str) -> None:
         """
@@ -656,19 +666,23 @@ class NmapDojoApp:
             return
         
         self.set_loading(True)
+        self.add_terminal_line("[*] Getting hint...", COLOR_TEXT_CYAN)
         
-        try:
-            hint = self.ai_service.get_hint(self.current_mission)
-            
-            self.add_terminal_line("")
-            self.add_terminal_line(f"[HINT] {hint}", COLOR_TEXT_YELLOW)
-            self.add_terminal_line("")
-            
-        except Exception as e:
-            logger.error(f"Hint generation error: {e}")
-            self.add_terminal_line("[!] Could not generate hint. Try again.", COLOR_ERROR)
-        finally:
-            self.set_loading(False)
+        def _run() -> None:
+            try:
+                hint = self.ai_service.get_hint(self.current_mission)
+                
+                self.add_terminal_line("")
+                self.add_terminal_line(f"[HINT] {hint}", COLOR_TEXT_YELLOW)
+                self.add_terminal_line("")
+                
+            except Exception as e:
+                logger.error(f"Hint generation error: {e}")
+                self.add_terminal_line("[!] Could not generate hint. Try again.", COLOR_ERROR)
+            finally:
+                self.set_loading(False)
+        
+        self.page.run_thread(_run)
     
     def get_full_answer(self) -> None:
         """Get the full answer after using all hints."""
@@ -676,21 +690,25 @@ class NmapDojoApp:
             return
         
         self.set_loading(True)
+        self.add_terminal_line("[*] Generating answer...", COLOR_TEXT_CYAN)
         
-        try:
-            answer = self.ai_service.get_full_answer(self.current_mission)
-            
-            self.add_terminal_line("")
-            self.add_terminal_line("[ANSWER REVEALED]", COLOR_TEXT_YELLOW)
-            self.add_terminal_line(answer, COLOR_TEXT_CYAN)
-            self.add_terminal_line("")
-            self.add_terminal_line("[!] Try entering the command to complete the mission.", COLOR_TEXT_WHITE)
-            
-        except Exception as e:
-            logger.error(f"Answer generation error: {e}")
-            self.add_terminal_line("[!] Could not generate answer. Try again.", COLOR_ERROR)
-        finally:
-            self.set_loading(False)
+        def _run() -> None:
+            try:
+                answer = self.ai_service.get_full_answer(self.current_mission)
+                
+                self.add_terminal_line("")
+                self.add_terminal_line("[ANSWER REVEALED]", COLOR_TEXT_YELLOW)
+                self.add_terminal_line(answer, COLOR_TEXT_CYAN)
+                self.add_terminal_line("")
+                self.add_terminal_line("[!] Try entering the command to complete the mission.", COLOR_TEXT_WHITE)
+                
+            except Exception as e:
+                logger.error(f"Answer generation error: {e}")
+                self.add_terminal_line("[!] Could not generate answer. Try again.", COLOR_ERROR)
+            finally:
+                self.set_loading(False)
+        
+        self.page.run_thread(_run)
     
     def on_explain_why(self, e: ft.ControlEvent) -> None:
         """Handle Explain Why button click."""
@@ -698,21 +716,25 @@ class NmapDojoApp:
             return
         
         self.set_loading(True)
+        self.add_terminal_line("[*] Generating explanation...", COLOR_TEXT_CYAN)
         
-        try:
-            explanation = self.ai_service.get_explanation(self.current_mission)
-            
-            self.add_terminal_line("")
-            self.add_terminal_line("[EXPLANATION]", COLOR_TEXT_CYAN)
-            for line in explanation.split('\n'):
-                self.add_terminal_line(line, COLOR_TEXT_WHITE)
-            self.add_terminal_line("")
-            
-        except Exception as e:
-            logger.error(f"Explanation generation error: {e}")
-            self.add_terminal_line("[!] Could not generate explanation. Try again.", COLOR_ERROR)
-        finally:
-            self.set_loading(False)
+        def _run() -> None:
+            try:
+                explanation = self.ai_service.get_explanation(self.current_mission)
+                
+                self.add_terminal_line("")
+                self.add_terminal_line("[EXPLANATION]", COLOR_TEXT_CYAN)
+                for line in explanation.split('\n'):
+                    self.add_terminal_line(line, COLOR_TEXT_WHITE)
+                self.add_terminal_line("")
+                
+            except Exception as e:
+                logger.error(f"Explanation generation error: {e}")
+                self.add_terminal_line("[!] Could not generate explanation. Try again.", COLOR_ERROR)
+            finally:
+                self.set_loading(False)
+        
+        self.page.run_thread(_run)
     
     def show_help(self) -> None:
         """Display help information."""
